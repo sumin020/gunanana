@@ -1,0 +1,93 @@
+const express = require("express");
+const pool = require('../config/db.js')
+
+const getUserGoals = async(req, res) => {
+  try {
+    const userId = req.params.userId;
+    const status = req.query.status || "IN_PROGRESS";
+
+    pool.query("SELECT * FROM Goals WHERE user_id = ? AND status = ?", [userId, status], (err, result) => {
+      if (err) {
+        console.error("❌ MySQL 에러:", err);
+        return res.status(504).send({ message: "DB 에러입니다." });
+      }
+
+      if (result.length === 0) {
+        return res.status(404).send({ message: "사용자의 목표를 찾을 수 없습니다." });
+      }
+
+      const response = {
+        goals: result.map((goal) => ({
+          goalId: goal.goal_id,
+          title: goal.title,
+          content: goal.content,
+          interval: { week: goal.interval_weeks, times: goal.interval_times },
+          term: { start: goal.start_date, end: goal.end_date },
+          progress: goal.progress,
+          status: goal.status,
+        })),
+      };
+
+      return res.status(200).json(response);
+    });
+  } catch (error) {
+    console.error("❌ 서버 오류:", error);
+    return res.status(500).send({ message: "서버 오류입니다." });
+  }
+};
+
+const getGoalById = async(req, res) => {
+  try {
+    const userId = req.params.userId;
+    const goalId = req.params.goalId;
+
+    pool.query("SELECT * FROM Goals WHERE goal_id = ?", [goalId], (err, result) => {
+      if (err) {
+        console.error("❌ MySQL 에러:", err);
+        return res.status(504).send({ message: "DB 에러입니다." });
+      }
+
+      if (result.length === 0) {
+        return res.status(404).send({ message: "해당 목표가 존재하지 않습니다." });
+      }
+
+      const goal = result[0];
+
+      if (goal.user_id !== parseInt(userId)) {
+        return res.status(403).send({ message: "해당 목표 조회 권한이 없습니다." });
+      }
+
+      pool.query("SELECT * FROM GoalRecord WHERE goal_id = ? ORDER BY created_at ASC", [goalId], (err, records) => {
+        if (err) {
+          console.error("❌ MySQL 에러:", err);
+          return res.status(504).send({ message: "DB 에러입니다." });
+        }
+
+        const recordRes = records.length > 0 
+          ? records.map((record) => ({
+              week: record.weeks,
+              content: record.content,
+              date: record.created_at,
+            }))
+          : [];
+
+        const response = {
+          goalId: goalId,
+          date: goal.created_at,
+          title: goal.title,
+          interval: { week: goal.interval_weeks, times: goal.interval_times },
+          term: { start: goal.start_date, end: goal.end_date },
+          progress: goal.progress,
+          progressRecord: recordRes,
+        };
+
+        return res.status(200).json(response);
+      });
+    });
+  } catch (error) {
+    console.error("API 오류 발생:", error);
+    return res.status(500).send({ message: "서버 오류입니다." });
+  }
+};
+
+module.exports = { getUserGoals, getGoalById };
