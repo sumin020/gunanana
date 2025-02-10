@@ -90,4 +90,64 @@ const getGoalById = async(req, res) => {
   }
 };
 
-module.exports = { getUserGoals, getGoalById };
+const postGoalRecord = async(req, res) => {
+  try {
+    const goalId = req.params.goalId;
+    const { week, content } = req.body;
+
+    let totalTimes;
+    let records;
+
+    pool.query("INSERT INTO GoalRecord (goal_id, week, content) VALUES (?, ?, ?)", 
+      [goalId, week, content], 
+      (err, result) => {
+        if (err) {
+          console.error("❌ GoalRecord 삽입 오류:", err);
+          return res.status(504).json({ message: "DB 삽입 오류입니다." });
+        }
+        console.log("✅ GoalRecord가 DB에 저장되었습니다.");
+
+        pool.query("SELECT (interval_weeks * interval_times) AS totalTimes FROM Goals WHERE goal_id=?", 
+          [goalId], 
+          (err, result) => {
+            if (err) {
+              console.error("❌ Goals 조회 오류:", err);
+              return res.status(504).json({ message: "DB 조회 오류입니다." });
+            }
+            totalTimes = result.length > 0 ? result[0].totalTimes ?? 1 : 1; // 기본값 1
+
+            pool.query("SELECT COUNT(*) AS records FROM GoalRecord WHERE goal_id=?", 
+              [goalId], 
+              (err, result) => {
+                if (err) {
+                  console.error("❌ GoalRecord 개수 조회 오류:", err);
+                  return res.status(504).json({ message: "DB 조회 오류입니다." });
+                }
+                records = result.length > 0 ? result[0].records ?? 0 : 0; // 기본값 0
+
+                const progress = parseInt((records / totalTimes) * 100);
+                pool.query("UPDATE Goals SET progress = ? WHERE goal_id = ?", 
+                  [progress, goalId], 
+                  (err, result) => {
+                    if (err) {
+                      console.error("❌ Goals 업데이트 오류:", err);
+                      return res.status(504).json({ message: "DB 업데이트 오류입니다." });
+                    }
+
+                    return res.status(200).json({ message: "기록이 성공적으로 저장되었습니다.", progress });
+                  }
+                );
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error("❌ 서버 오류:", err);
+    return res.status(500).json({ message: "서버 오류입니다." });
+  }
+};
+
+
+module.exports = { getUserGoals, getGoalById, postGoalRecord };

@@ -1,0 +1,21 @@
+//목표 검색
+GET  http://localhost:3000/api/2/goals
+Content-Type: application/json
+
+
+###
+
+//목표기록 검색
+GET http://localhost:3000/api/2/2
+Content-Type: application/json
+
+
+###
+
+POST http://localhost:3000/api/goalrecord/2
+Content-Type: application/json
+
+{
+  "week":1,
+  "content": "TEST입니다."
+}
