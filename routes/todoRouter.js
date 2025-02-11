@@ -1,5 +1,5 @@
 const express = require("express");
-const {getUserGoals, getGoalById, postGoalRecord} = require('../controller/todocontroller.js')
+const {getUserGoals, getGoalById, postGoalRecord} = require('../controller/todocontroller.js');
 
 const todoRouter = express.Router();
 
