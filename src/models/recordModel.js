@@ -1,4 +1,4 @@
-const db = require("../../config/db");
+const db = require("../../config/db2");
 
 // 오늘 기록을 작성한 사람의 수를 세는 함수
 const getTodayRecordsCount = async () => {
