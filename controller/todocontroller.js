@@ -134,7 +134,7 @@ const postGoalRecord = async(req, res) => {
                       return res.status(504).json({ message: "DB 업데이트 오류입니다." });
                     }
 
-                    return res.status(200).json({ message: "기록이 성공적으로 저장되었습니다.", progress });
+                    return res.status(200).json({ message: "기록이 성공적으로 저장되었습니다.", progress: progress });
                   }
                 );
               }

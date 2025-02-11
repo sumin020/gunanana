@@ -29,12 +29,47 @@ paths:
                   goalId:
                     type: integer
                     example: 42
+                  date:
+                    type: string
+                    example: "2025-01-01T00:00:00Z"
                   title:
                     type: string
                     example: "운동하기"
+                  interval:
+                    type: object
+                    properties:
+                      week:
+                        type: integer
+                        example: 1
+                      times:
+                        type: integer
+                        example: 3
+                  term:
+                    type: object
+                    properties:
+                      start:
+                        type: string
+                        example: "2025-01-01"
+                      end:
+                        type: string
+                        example: "2025-02-01"
                   progress:
                     type: integer
                     example: 50
+                  progressRecord:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        week:
+                          type: integer
+                          example: 3
+                        content:
+                          type: string
+                          example: "3주차 목표 완료"
+                        date:
+                          type: string
+                          example: "2025-01-21T12:00:00Z"
         403:
           description: 해당 목표 조회 권한 없음
         404:
