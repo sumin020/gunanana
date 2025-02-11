@@ -1,5 +1,5 @@
 const express = require("express");
-const pool = require('../../../config/db.js');
+const pool = require('../config/db.js')
 
 const getUserGoals = async(req, res) => {
   try {
