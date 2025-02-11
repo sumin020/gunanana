@@ -23,3 +23,4 @@ pool.getConnection((err, connection) => {
 });
 
 module.exports = pool;
+
