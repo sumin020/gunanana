@@ -5,7 +5,7 @@ console.log('JWT_SECRET:', process.env.JWT_SECRET);  // JWT_SECRET 값 확인
 
 const express = require("express");
 const app = express();
-const userRoutes = require("./routers/userRouter");
+const userRoutes = require("./src/routers/userRouter");
 
 app.use(express.json()); // JSON 요청 처리
 app.use("/api", userRoutes); // 

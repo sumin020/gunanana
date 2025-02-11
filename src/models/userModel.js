@@ -1,4 +1,4 @@
-const db = require("../config/db");
+const db = require("../../config/db");
 
 // 이메일로 사용자 찾기
 const getUserByEmail = async (email) => {
