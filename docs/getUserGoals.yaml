@@ -1,0 +1,71 @@
+paths:
+  /api/{userId}/goals:
+    get:
+      summary: 특정 사용자의 목표 조회
+      description: 특정 사용자의 목표 리스트를 조회합니다.
+      tags:
+        - Goals
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+          description: 사용자 ID
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            example: "IN_PROGRESS"
+          description: 조회할 목표 상태, 기본값은 "IN_PROGRESS" ('TEMP','SAVED','IN_PROGRESS','COMPLETED') 4가지 있습니다.
+      responses:
+        200:
+          description: 목표 리스트 반환
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  goals:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        goalId:
+                          type: integer
+                          example: 42
+                        title:
+                          type: string
+                          example: "운동하기"
+                        content:
+                          type: string
+                          example: "매일 30분 달리기"
+                        interval:
+                          type: object
+                          properties:
+                            week:
+                              type: integer
+                              example: 1
+                            times:
+                              type: integer
+                              example: 3
+                        term:
+                          type: object
+                          properties:
+                            start:
+                              type: string
+                              example: "2025-01-01"
+                            end:
+                              type: string
+                              example: "2025-02-01"
+                        progress:
+                          type: integer
+                          example: 50
+                        status:
+                          type: string
+                          example: "IN_PROGRESS"
+        404:
+          description: 사용자의 목표를 찾을 수 없음
+        500:
+          description: 서버 오류 발생

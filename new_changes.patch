@@ -1,0 +1,804 @@
+diff --git a/.gitignore b/.gitignore
+index 3ec544c..031ff7e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,3 @@
+-node_modules/
+-.env
+\ No newline at end of file
++.env
++node_modules
++
+diff --git a/README.md b/README.md
+index e69de29..be1139e 100644
+--- a/README.md
++++ b/README.md
+@@ -0,0 +1 @@
++# Daily_Vivea_Backend
+\ No newline at end of file
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..5cf84df
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,16 @@
++require('dotenv').config(); 
++
++console.log('JWT_SECRET:', process.env.JWT_SECRET);  // JWT_SECRET 값 확인
++
++
++const express = require("express");
++const app = express();
++const userRoutes = require("./src/routers/userRouter");
++
++app.use(express.json()); // JSON 요청 처리
++app.use("/api", userRoutes); // 
++
++const PORT = 3000;
++app.listen(PORT, () => {
++  console.log(`Server running on http://localhost:${PORT}`);
++});
+diff --git a/config/db.js b/config/db.js
+new file mode 100644
+index 0000000..81e1c6e
+--- /dev/null
++++ b/config/db.js
+@@ -0,0 +1,26 @@
++const mysql = require('mysql2');
++require('dotenv').config();
++
++const pool = mysql.createPool({
++  host: process.env.DB_HOST,
++  user: process.env.DB_USER,
++  password: process.env.DB_PASSWORD,
++  database: process.env.DB_NAME,
++  port: process.env.DB_PORT, 
++  waitForConnections: true,
++  connectionLimit: 10, 
++  queueLimit: 0
++});
++
++// 연결 테스트
++pool.getConnection((err, connection) => {
++  if (err) {
++    console.error('❌ MySQL 연결 실패:', err);
++    return;
++  }
++  console.log('✅ MySQL RDS 연결 성공!');
++  connection.release();
++});
++
++module.exports = pool;
++
+diff --git a/config/swaggerConfig.js b/config/swaggerConfig.js
+new file mode 100644
+index 0000000..6661055
+--- /dev/null
++++ b/config/swaggerConfig.js
+@@ -0,0 +1,33 @@
++const swaggerJSDoc = require("swagger-jsdoc");
++const fs = require("fs");
++const yaml = require("js-yaml");
++
++// ✅ 각 YAML 파일을 불러와서 합침
++const userGoals = yaml.load(fs.readFileSync("./docs/getUserGoals.yaml", "utf8"));
++const goalById = yaml.load(fs.readFileSync("./docs/getGoalById.yaml", "utf8"));
++const goalRecord = yaml.load(fs.readFileSync("./docs/postGoalRecord.yaml", "utf8"));
++
++const swaggerDefinition = {
++  openapi: "3.0.0",
++  info: {
++    title: "Todo API Documentation",
++    version: "1.0.0",
++    description: "Daily Vivea Todo 부분 관련 Swagger입니다.",
++  },
++  servers: [
++    {
++      url: "http://localhost:3000",
++      description: "로컬",
++    },
++  ],
++  paths: {...userGoals.paths, ...goalById.paths, ...goalRecord.paths},
++};
++
++const options = {
++  swaggerDefinition,
++  apis: [],
++};
++
++const swaggerSpec = swaggerJSDoc(options);
++
++module.exports = swaggerSpec;
+diff --git a/docs/getGoalById.yaml b/docs/getGoalById.yaml
+new file mode 100644
+index 0000000..b08de6e
+--- /dev/null
++++ b/docs/getGoalById.yaml
+@@ -0,0 +1,78 @@
++paths:
++  /api/{userId}/{goalId}:
++    get:
++      summary: 특정 목표 상세 조회
++      description: 특정 goalId에 해당하는 목표 정보를 가져옵니다.
++      tags:
++        - Goals
++      parameters:
++        - in: path
++          name: userId
++          required: true
++          schema:
++            type: integer
++          description: 사용자 ID
++        - in: path
++          name: goalId
++          required: true
++          schema:
++            type: integer
++          description: 목표 ID
++      responses:
++        200:
++          description: 목표 정보 반환
++          content:
++            application/json:
++              schema:
++                type: object
++                properties:
++                  goalId:
++                    type: integer
++                    example: 42
++                  date:
++                    type: string
++                    example: "2025-01-01T00:00:00Z"
++                  title:
++                    type: string
++                    example: "운동하기"
++                  interval:
++                    type: object
++                    properties:
++                      week:
++                        type: integer
++                        example: 1
++                      times:
++                        type: integer
++                        example: 3
++                  term:
++                    type: object
++                    properties:
++                      start:
++                        type: string
++                        example: "2025-01-01"
++                      end:
++                        type: string
++                        example: "2025-02-01"
++                  progress:
++                    type: integer
++                    example: 50
++                  progressRecord:
++                    type: array
++                    items:
++                      type: object
++                      properties:
++                        week:
++                          type: integer
++                          example: 3
++                        content:
++                          type: string
++                          example: "3주차 목표 완료"
++                        date:
++                          type: string
++                          example: "2025-01-21T12:00:00Z"
++        403:
++          description: 해당 목표 조회 권한 없음
++        404:
++          description: 목표를 찾을 수 없음
++        500:
++          description: 서버 오류 발생
+diff --git a/docs/getUserGoals.yaml b/docs/getUserGoals.yaml
+new file mode 100644
+index 0000000..946da63
+--- /dev/null
++++ b/docs/getUserGoals.yaml
+@@ -0,0 +1,71 @@
++paths:
++  /api/{userId}/goals:
++    get:
++      summary: 특정 사용자의 목표 조회
++      description: 특정 사용자의 목표 리스트를 조회합니다.
++      tags:
++        - Goals
++      parameters:
++        - in: path
++          name: userId
++          required: true
++          schema:
++            type: integer
++          description: 사용자 ID
++        - in: query
++          name: status
++          required: false
++          schema:
++            type: string
++            example: "IN_PROGRESS"
++          description: 조회할 목표 상태, 기본값은 "IN_PROGRESS" ('TEMP','SAVED','IN_PROGRESS','COMPLETED') 4가지 있습니다.
++      responses:
++        200:
++          description: 목표 리스트 반환
++          content:
++            application/json:
++              schema:
++                type: object
++                properties:
++                  goals:
++                    type: array
++                    items:
++                      type: object
++                      properties:
++                        goalId:
++                          type: integer
++                          example: 42
++                        title:
++                          type: string
++                          example: "운동하기"
++                        content:
++                          type: string
++                          example: "매일 30분 달리기"
++                        interval:
++                          type: object
++                          properties:
++                            week:
++                              type: integer
++                              example: 1
++                            times:
++                              type: integer
++                              example: 3
++                        term:
++                          type: object
++                          properties:
++                            start:
++                              type: string
++                              example: "2025-01-01"
++                            end:
++                              type: string
++                              example: "2025-02-01"
++                        progress:
++                          type: integer
++                          example: 50
++                        status:
++                          type: string
++                          example: "IN_PROGRESS"
++        404:
++          description: 사용자의 목표를 찾을 수 없음
++        500:
++          description: 서버 오류 발생
+diff --git a/docs/postGoalRecord.yaml b/docs/postGoalRecord.yaml
+new file mode 100644
+index 0000000..a2bfa2b
+--- /dev/null
++++ b/docs/postGoalRecord.yaml
+@@ -0,0 +1,49 @@
++paths:
++  /api/goalrecord/{goalId}:
++    post:
++      summary: 목표 기록 추가
++      description: 특정 목표(goalId)에 대한 주차별 진행 기록을 추가하고, 진행률(progress)을 업데이트합니다.
++      tags:
++        - Goals
++      parameters:
++        - in: path
++          name: goalId
++          required: true
++          schema:
++            type: integer
++          description: 목표 ID
++      requestBody:
++        required: true
++        content:
++          application/json:
++            schema:
++              type: object
++              properties:
++                week:
++                  type: integer
++                  example: 3
++                  description: 기록이 저장되는 주차
++                content:
++                  type: string
++                  example: "3주차 목표 완료"
++                  description: 해당 주차에 수행한 목표 내용
++      responses:
++        200:
++          description: 기록이 성공적으로 추가됨
++          content:
++            application/json:
++              schema:
++                type: object
++                properties:
++                  message:
++                    type: string
++                    example: "기록이 성공적으로 저장되었습니다."
++                  progress:
++                    type: integer
++                    example: 75
++        400:
++          description: 잘못된 요청 (필수 필드 누락)
++        404:
++          description: 목표(goalId)를 찾을 수 없음
++        500:
++          description: 서버 오류 발생
+diff --git a/package.json b/package.json
+index cc9cd7e..995eafe 100644
+--- a/package.json
++++ b/package.json
+@@ -1,20 +1,25 @@
++
+ {
+-  "name": "dailyvivea",
++  "name": "dailyviva",
+   "version": "1.0.0",
+-  "main": "server.js",
++  "description": "",
++  "main": "index.js",
+   "scripts": {
+-    "test": "echo \"Error: no test specified\" && exit 1",
+-    "start": "node server.js"
++    "test": "echo \"Error: no test specified\" && exit 1"
++
+   },
+   "keywords": [],
+   "author": "",
+   "license": "ISC",
+-  "description": "",
++
+   "dependencies": {
+-    "cors": "^2.8.5",
+     "dotenv": "^16.4.7",
+     "express": "^4.21.2",
+-    "morgan": "^1.10.0",
+-    "mysql2": "^3.12.0"
++    "js-yaml": "^4.1.0",
++    "mysql2": "^3.12.0",
++    "swagger-jsdoc": "^6.2.8",
++    "swagger-ui-express": "^5.0.1",
++    "bcrypt": "^5.1.1",
++    "jsonwebtoken": "^9.0.2"
+   }
+ }
+diff --git a/requests.http b/requests.http
+new file mode 100644
+index 0000000..517fd5f
+--- /dev/null
++++ b/requests.http
+@@ -0,0 +1,21 @@
++//목표 검색
++GET  http://localhost:3000/api/2/goals
++Content-Type: application/json
++
++
++###
++
++//목표기록 검색
++GET http://localhost:3000/api/2/2
++Content-Type: application/json
++
++
++###
++
++POST http://localhost:3000/api/goalrecord/2
++Content-Type: application/json
++
++{
++  "week":1,
++  "content": "TEST입니다."
++}
+\ No newline at end of file
+diff --git a/server.js b/server.js
+index ba10119..37b1090 100644
+--- a/server.js
++++ b/server.js
+@@ -1,37 +1,20 @@
+-// const express = require('express')
+-// const app = express()
+-// const mysql = require('mysql2')
+-
+-// const connection = mysql.createConnection({
+-//     host: 'database-1.c3uyg6imsa4q.ap-northeast-2.rds.amazonaws.com',
+-//     user: 'admin',
+-//     password: 'dailyviva',
+-//     port: 3306,
+-// });
+-// connection.connect((err) => {
+-//     if (err) {
+-//       console.error('❌ Database connection failed:', err);
+-//       return;
+-//     }
+-//     console.log('✅ Connected to Amazon RDS');
+-//     });
+-
+-require("dotenv").config();  // ✅ 환경 변수 로드
+-
++require("dotenv").config();
+ const express = require("express");
++const swaggerUi = require("swagger-ui-express");
++const swaggerSpec = require("./config/swaggerConfig");
++const todoRouter = require("./src/routes/todoRouter");
++
+ const app = express();
+-const port = process.env.PORT || 3000;
++const PORT = process.env.PORT || 3000;
+ 
+ app.use(express.json());
++app.use("/api", todoRouter);
+ 
+-app.get("/", (req, res) => {
+-    res.send("Server is running");
+-});
+-
+-const reportRoutes = require("./src/router/reportRoutes");
+-app.use("/reports", reportRoutes);
++// ✅ Swagger UI 설정
++app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+ 
+-app.listen(port, () => {
+-    console.log(`서버가 실행중입니다 서버 주소 http://localhost:${port}.`);
++app.listen(PORT, () => {
++  console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
++  console.log(`📄 Swagger 문서: http://localhost:${PORT}/api-docs`);
+ });
+ 
+diff --git a/src/controllers/todocontroller.js b/src/controllers/todocontroller.js
+new file mode 100644
+index 0000000..f39a97a
+--- /dev/null
++++ b/src/controllers/todocontroller.js
+@@ -0,0 +1,153 @@
++const express = require("express");
++const pool = require('../config/db.js')
++
++const getUserGoals = async(req, res) => {
++  try {
++    const userId = req.params.userId;
++    const status = req.query.status || "IN_PROGRESS";
++
++    pool.query("SELECT * FROM Goals WHERE user_id = ? AND status = ?", [userId, status], (err, result) => {
++      if (err) {
++        console.error("❌ MySQL 에러:", err);
++        return res.status(504).send({ message: "DB 에러입니다." });
++      }
++
++      if (result.length === 0) {
++        return res.status(404).send({ message: "사용자의 목표를 찾을 수 없습니다." });
++      }
++
++      const response = {
++        goals: result.map((goal) => ({
++          goalId: goal.goal_id,
++          title: goal.title,
++          content: goal.content,
++          interval: { week: goal.interval_weeks, times: goal.interval_times },
++          term: { start: goal.start_date, end: goal.end_date },
++          progress: goal.progress,
++          status: goal.status,
++        })),
++      };
++
++      return res.status(200).json(response);
++    });
++  } catch (error) {
++    console.error("❌ 서버 오류:", error);
++    return res.status(500).send({ message: "서버 오류입니다." });
++  }
++};
++
++const getGoalById = async(req, res) => {
++  try {
++    const userId = req.params.userId;
++    const goalId = req.params.goalId;
++
++    pool.query("SELECT * FROM Goals WHERE goal_id = ?", [goalId], (err, result) => {
++      if (err) {
++        console.error("❌ MySQL 에러:", err);
++        return res.status(504).send({ message: "DB 에러입니다." });
++      }
++
++      if (result.length === 0) {
++        return res.status(404).send({ message: "해당 목표가 존재하지 않습니다." });
++      }
++
++      const goal = result[0];
++
++      if (goal.user_id !== parseInt(userId)) {
++        return res.status(403).send({ message: "해당 목표 조회 권한이 없습니다." });
++      }
++
++      pool.query("SELECT * FROM GoalRecord WHERE goal_id = ? ORDER BY created_at ASC", [goalId], (err, records) => {
++        if (err) {
++          console.error("❌ MySQL 에러:", err);
++          return res.status(504).send({ message: "DB 에러입니다." });
++        }
++
++        const recordRes = records.length > 0 
++          ? records.map((record) => ({
++              week: record.weeks,
++              content: record.content,
++              date: record.created_at,
++            }))
++          : [];
++
++        const response = {
++          goalId: goalId,
++          date: goal.created_at,
++          title: goal.title,
++          interval: { week: goal.interval_weeks, times: goal.interval_times },
++          term: { start: goal.start_date, end: goal.end_date },
++          progress: goal.progress,
++          progressRecord: recordRes,
++        };
++
++        return res.status(200).json(response);
++      });
++    });
++  } catch (error) {
++    console.error("API 오류 발생:", error);
++    return res.status(500).send({ message: "서버 오류입니다." });
++  }
++};
++
++const postGoalRecord = async(req, res) => {
++  try {
++    const goalId = req.params.goalId;
++    const { week, content } = req.body;
++
++    let totalTimes;
++    let records;
++
++    pool.query("INSERT INTO GoalRecord (goal_id, week, content) VALUES (?, ?, ?)", 
++      [goalId, week, content], 
++      (err, result) => {
++        if (err) {
++          console.error("❌ GoalRecord 삽입 오류:", err);
++          return res.status(504).json({ message: "DB 삽입 오류입니다." });
++        }
++        console.log("✅ GoalRecord가 DB에 저장되었습니다.");
++
++        pool.query("SELECT (interval_weeks * interval_times) AS totalTimes FROM Goals WHERE goal_id=?", 
++          [goalId], 
++          (err, result) => {
++            if (err) {
++              console.error("❌ Goals 조회 오류:", err);
++              return res.status(504).json({ message: "DB 조회 오류입니다." });
++            }
++            totalTimes = result.length > 0 ? result[0].totalTimes ?? 1 : 1; // 기본값 1
++
++            pool.query("SELECT COUNT(*) AS records FROM GoalRecord WHERE goal_id=?", 
++              [goalId], 
++              (err, result) => {
++                if (err) {
++                  console.error("❌ GoalRecord 개수 조회 오류:", err);
++                  return res.status(504).json({ message: "DB 조회 오류입니다." });
++                }
++                records = result.length > 0 ? result[0].records ?? 0 : 0; // 기본값 0
++
++                const progress = parseInt((records / totalTimes) * 100);
++                pool.query("UPDATE Goals SET progress = ? WHERE goal_id = ?", 
++                  [progress, goalId], 
++                  (err, result) => {
++                    if (err) {
++                      console.error("❌ Goals 업데이트 오류:", err);
++                      return res.status(504).json({ message: "DB 업데이트 오류입니다." });
++                    }
++
++                    return res.status(200).json({ message: "기록이 성공적으로 저장되었습니다.", progress: progress });
++                  }
++                );
++              }
++            );
++          }
++        );
++      }
++    );
++  } catch (err) {
++    console.error("❌ 서버 오류:", err);
++    return res.status(500).json({ message: "서버 오류입니다." });
++  }
++};
++
++
++module.exports = { getUserGoals, getGoalById, postGoalRecord };
+diff --git a/src/controllers/userController.js b/src/controllers/userController.js
+new file mode 100644
+index 0000000..bdee956
+--- /dev/null
++++ b/src/controllers/userController.js
+@@ -0,0 +1,79 @@
++//const bcrypt = require("bcrypt");
++const jwt = require('jsonwebtoken');
++const userModel = require("../models/userModel");
++const recordModel = require("../models/recordModel");
++
++const signup = async (req, res) => {
++    try {
++      const { name, email, password, age } = req.body;
++  
++      // 이메일 중복 확인
++      const existingUser = await userModel.getUserByEmail(email);
++      if (existingUser) {
++        return res.status(400).json({ message: 'Email already in use' });
++      }
++  
++      // 비밀번호 해싱
++      //const hashedPassword = await bcrypt.hash(password, 10);
++  
++      // 사용자 생성
++      const userId = await userModel.createUser(name, email, password, age);
++  
++      res.status(201).json({
++        message: "User registered successfully",
++        userId: userId
++      });
++    } catch (error) {
++      console.error(error);
++      res.status(500).json({ message: "Error registering user" });
++    }
++  };
++  
++  const login = async (req, res) => {
++    try {
++        const { email, password } = req.body;
++
++        // 이메일로 사용자 조회
++        const user = await userModel.getUserByEmail(email);
++        if (!user) {
++            return res.status(401).json({ message: 'Invalid email or password' });
++        }
++
++        // 비밀번호 검증 (해싱 없이 저장된 비밀번호를 직접 비교)
++        if (password !== user.password) {
++            return res.status(401).json({ message: 'Invalid email or password' });
++        }
++
++        // JWT 토큰 생성
++        const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, {
++            expiresIn: '1h', // 1시간 동안 유효
++        });
++
++        res.status(200).json({ message: 'Login successful', token });
++    } catch (error) {
++        console.error(error);
++        res.status(500).json({ message: 'Error logging in' });
++    }
++};
++
++const getTodaysRecordCount = async (req, res) => {
++    try {
++      const count = await recordModel.getTodayRecordsCount(); // 정확한 함수 이름 사용
++      if (count === 0) {
++        return res.status(200).json({ message: "0" });
++      }
++      return res.status(200).json({ message: `${count}` });
++    } catch (error) {
++      console.error("Error fetching today's record count:", error);
++      res.status(500).json({ message: "Error fetching today's record count", error: error.message });
++    }
++  };
++
++  const logout = (req, res) => {
++    // 클라이언트 측에서 토큰 삭제하도록 안내하는 메시지 반환
++    res.status(200).json({ message: "로그아웃되었습니다. 클라이언트에서 토큰을 삭제하세요." });
++};
++  
++
++  module.exports = { signup, login, getTodaysRecordCount, logout };
++  
+\ No newline at end of file
+diff --git a/src/models/recordModel.js b/src/models/recordModel.js
+new file mode 100644
+index 0000000..ccbdc6e
+--- /dev/null
++++ b/src/models/recordModel.js
+@@ -0,0 +1,23 @@
++const db = require("../../config/db");
++
++// 오늘 기록을 작성한 사람의 수를 세는 함수
++const getTodayRecordsCount = async () => {
++    try {
++      // 오늘 날짜에 해당하는 경험 기록을 조회
++      const query = "SELECT COUNT(DISTINCT user_id) AS count FROM Experiences WHERE date = CURRENT_DATE";
++      const result = await db.query(query);
++  
++      //console.log("Query result:", result);
++      const count = result[0].count; // 결과에서 count 값을 추출
++      if (count === 0) {
++        return "0"; // 데이터가 없으면 메시지 반환
++      }
++  
++      return `${count}`; // 경험을 기록한 사람 수 반환
++    } catch (error) {
++      console.error("Error fetching today's record count:", error);
++      throw new Error("Error fetching today's record count");
++    }
++  };
++
++module.exports = { getTodayRecordsCount };
+diff --git a/src/models/userModel.js b/src/models/userModel.js
+new file mode 100644
+index 0000000..d4e7de1
+--- /dev/null
++++ b/src/models/userModel.js
+@@ -0,0 +1,35 @@
++const db = require("../../config/db");
++
++// 이메일로 사용자 찾기
++const getUserByEmail = async (email) => {
++  const query = 'SELECT * FROM Users WHERE email = ?';
++  try {
++    const results = await db.query(query, [email]);  // 결과 확인용으로 수정
++    //console.log("Query results:", results);  // 쿼리 결과 확인용 로그
++    return results[0] || null; // 결과가 있으면 첫 번째 항목 반환, 없으면 null 반환
++  } catch (error) {
++    console.error("Error fetching user by email:", error);
++    throw new Error("Error fetching user by email");
++  }
++};
++
++// 새 사용자 추가
++async function createUser(name, email, password, age) {
++    const query = "INSERT INTO Users (name, email, password, age) VALUES (?, ?, ?, ?)";
++    const values = [name, email, password, age];
++  
++    const result = await db.query(query, values);
++    //console.log("DB Query Result:", result);
++  
++    // 배열인지 확인 후 insertId 반환
++    if (Array.isArray(result)) {
++      return result[0].insertId;
++    } else {
++      return result.insertId;
++    }
++  }
++  
++  
++  
++
++module.exports = { createUser, getUserByEmail };
+diff --git a/src/routes/todoRouter.js b/src/routes/todoRouter.js
+new file mode 100644
+index 0000000..efc7793
+--- /dev/null
++++ b/src/routes/todoRouter.js
+@@ -0,0 +1,10 @@
++const express = require("express");
++const {getUserGoals, getGoalById, postGoalRecord} = require('../../controllers/todocontroller.js');
++
++const todoRouter = express.Router();
++
++todoRouter.get('/:userId/goals',getUserGoals);
++todoRouter.get('/:userId/:goalId',getGoalById);
++todoRouter.post('/goalrecord/:goalId',postGoalRecord);
++
++module.exports = todoRouter;
+\ No newline at end of file
+diff --git a/src/routes/userRoutes.js b/src/routes/userRoutes.js
+new file mode 100644
+index 0000000..33b52dc
+--- /dev/null
++++ b/src/routes/userRoutes.js
+@@ -0,0 +1,19 @@
++const express = require("express");
++const router = express.Router();
++const userController = require("../controllers/userController");
++
++// 모든 사용자 가져오기
++//router.get("/", userController.getAllUsers);
++
++// 사용자 추가
++//router.post("/", userController.createUser);
++
++// 회원가입 API
++router.post("/user/signup", userController.signup);
++router.post("/user/login", userController.login);
++router.post("/user/logout", userController.logout);
++
++// 오늘의 기록자 수 API
++router.get("/user/today-records", userController.getTodaysRecordCount);
++
++module.exports = router;

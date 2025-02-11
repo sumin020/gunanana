@@ -1,0 +1,32 @@
+diff --git a/.gitignore b/.gitignore
+index 3ec544c..77db25e 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,4 @@
+ node_modules/
+-.env
+\ No newline at end of file
++.env
++package-lock.json
++package.json
+diff --git a/Daily_Vivea_Backend b/Daily_Vivea_Backend
+deleted file mode 160000
+index 91982d0..0000000
+--- a/Daily_Vivea_Backend
++++ /dev/null
+@@ -1 +0,0 @@
+-Subproject commit 91982d0dcc35227e071e0b6dcfb46b61292c1cdb
+diff --git a/src/router/reportRoutes.js b/src/routes/reportRoutes.js
+similarity index 78%
+rename from src/router/reportRoutes.js
+rename to src/routes/reportRoutes.js
+index fc5c380..1f50a95 100644
+--- a/src/router/reportRoutes.js
++++ b/src/routes/reportRoutes.js
+@@ -3,5 +3,6 @@ const router = express.Router();
+ const reportController = require("../controllers/reportController"); 
+ 
+ router.get("/", reportController.getReports); 
++router.get("/details", reportController.getReportDetails);
+ 
+ module.exports = router;
