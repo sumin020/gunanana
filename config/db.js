@@ -1,25 +1,26 @@
-const mysql = require("mysql");
-const util = require("util");
+const mysql = require('mysql2');
+require('dotenv').config();
 
-const connection = mysql.createConnection({
-    host: 'database-1.c3uyg6imsa4q.ap-northeast-2.rds.amazonaws.com',
-    port:'3306',
-    user: 'admin',
-    password: 'dailyviva',
-    database: 'DB',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT, 
+  waitForConnections: true,
+  connectionLimit: 10, 
+  queueLimit: 0
 });
 
-connection.connect((error) => {
-  if (error) {
-    console.error("Database connection failed: " + error.stack);
+// 연결 테스트
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error('❌ MySQL 연결 실패:', err);
     return;
   }
-  console.log("Connected to the database as ID " + connection.threadId);
+  console.log('✅ MySQL RDS 연결 성공!');
+  connection.release();
 });
 
-connection.query = util.promisify(connection.query);
+module.exports = pool;
 
-module.exports = connection;
